@@ -78,7 +78,7 @@ export class Injector {
         for (const chain of chainsData) {
             this.chains[chain.chainId] = {};
             if (this.infuraPID) {
-                const web3 = chain.web3[0].replace('${INFURA_ID}', this.infuraPID);
+                const web3 = chain.web3[0].replace('${INFURA_API_KEY}', this.infuraPID);
                 this.chains[chain.chainId].web3 = new Web3(web3);
             } else {
                 const web3 = chain.fullnode.dappnode;

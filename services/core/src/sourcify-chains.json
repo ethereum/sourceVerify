@@ -22,12 +22,15 @@
     },
     "5": {
         "fullnode": {
-            "dappnode": "http://kovan.dappnode:8545"
+            "dappnode": "http://goerli-geth.dappnode:8545"
         },
         "supported": true,
         "monitored": true
     },
     "42": {
+        "fullnode": {
+            "dappnode": "http://kovan.dappnode:8545"
+        },
         "supported": true,
         "monitored": true
     },

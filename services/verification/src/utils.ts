@@ -7,7 +7,6 @@ import fs from 'fs';
 const solc = require('solc');
 import {spawnSync} from 'child_process';
 import { StatusCodes } from 'http-status-codes';
-import { mkdirpSync } from 'fs-extra';
 import * as bunyan from 'bunyan';
 
 const GITHUB_SOLC_REPO = "https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/";
@@ -163,7 +162,7 @@ async function fetchSolcFromGitHub(solcPath: string, version: string, fileName: 
     const res = await fetch(githubSolcURI);
     if (res.status === StatusCodes.OK) {
         log.info(logObject, "Successfully fetched executable solc from GitHub");
-        mkdirpSync(Path.dirname(solcPath));
+        fs.mkdirSync(Path.dirname(solcPath), { recursive: true });
         const buffer = await res.buffer();
         fs.writeFileSync(solcPath, buffer, { mode: 0o755 });
         return true;

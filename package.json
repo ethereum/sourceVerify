@@ -74,7 +74,6 @@
     "@types/express": "^4.17.8",
     "@types/express-fileupload": "^1.1.4",
     "@types/express-session": "^1.17.3",
-    "@types/fs-extra": "^9.0.1",
     "@types/node": "^14.11.2",
     "@types/request-promise-native": "^1.0.17",
     "@types/serve-index": "^1.7.30",

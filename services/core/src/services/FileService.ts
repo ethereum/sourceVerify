@@ -1,13 +1,11 @@
 import dirTree from 'directory-tree';
-import path from 'path';
+import Path from 'path';
 import fs from 'fs';
 import web3 from 'web3';
 import * as bunyan from 'bunyan';
-import { outputFileSync } from 'fs-extra';
 import { FileObject, Match, Tag, MatchLevel, FilesInfo } from '../utils/types';
 import { getChainId } from '../utils/utils';
 import { Logger } from '../utils/logger';
-const saveFile = outputFileSync;
 
 export interface IFileService {
     getTreeByChainAndAddress(chainId: any, address: string): Promise<Array<string>>;
@@ -119,7 +117,8 @@ export class FileService implements IFileService {
      * @param file
      */
     save(path: string, file: any) {
-        saveFile(path, file);
+        fs.mkdirSync(Path.dirname(path), { recursive: true });
+        fs.writeFileSync(path, file);
         this.updateRepositoryTag();
     }
 
@@ -127,7 +126,7 @@ export class FileService implements IFileService {
      * Update repository tag
      */
     updateRepositoryTag() {
-        const filePath: string = path.join(this.repositoryPath, 'manifest.json')
+        const filePath: string = Path.join(this.repositoryPath, 'manifest.json')
         const timestamp = new Date().getTime();
         const repositoryVersion = process.env.REPOSITORY_VERSION || '0.1';
         const tag: Tag = {
