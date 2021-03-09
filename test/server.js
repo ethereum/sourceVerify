@@ -86,7 +86,7 @@ describe("Server", function() {
                 });
         });
 
-        const assertStatus = (err, res, expectedStatus, done) => {
+        const assertStatus = (err, res, expectedStatus, expectedChainIds, done) => {
             chai.expect(err).to.be.null;
             chai.expect(res.status).to.equal(StatusCodes.OK);
             const resultArray = res.body;
@@ -94,14 +94,15 @@ describe("Server", function() {
             const result = resultArray[0];
             chai.expect(result.address).to.equal(contractAddress);
             chai.expect(result.status).to.equal(expectedStatus);
+            chai.expect(result.chainIds).to.deep.equal(expectedChainIds)
             if (done) done();
         }
 
         it("should return false for previously unverified contract", (done) => {
             chai.request(server.app)
-                .get("/check-by-Addresses")
+                .get("/check-by-addresses")
                 .query({ chainIds: contractChain, addresses: contractAddress })
-                .end((err, res) => assertStatus(err, res, "false", done));
+                .end((err, res) => assertStatus(err, res, "false", undefined, done));
         });
 
         it("should fail for invalid address", (done) => {
@@ -119,7 +120,7 @@ describe("Server", function() {
                 .get("/check-by-addresses")
                 .query({ chainIds: contractChain, addresses: contractAddress })
                 .end((err, res) => {
-                    assertStatus(err, res, "false");
+                    assertStatus(err, res, "false", undefined);
                     chai.request(server.app).post("/")
                         .field("address", contractAddress)
                         .field("chain", contractChain)
@@ -132,7 +133,7 @@ describe("Server", function() {
                             chai.request(server.app)
                                 .get("/check-by-addresses")
                                 .query({ chainIds: contractChain, addresses: contractAddress })
-                                .end((err, res) => assertStatus(err, res, "perfect", done));
+                                .end((err, res) => assertStatus(err, res, "perfect", [contractChain], done));
                         });     
                 });
         });

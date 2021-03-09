@@ -13,17 +13,16 @@ type VerificationResult = {
 }
 
 type CheckAddressesResult = {
-    successful: string[],
+    successful: ServersideAddressCheck[],
     unsuccessful: string[],
     error: string
 }
 
-type CheckAddressesBody = [
-    {
-        address: string,
-        status: string
-    }
-]
+export type ServersideAddressCheck = {
+    address: string,
+    status: string,
+    chainIds?: string[]
+};
 
 export const verify = async (formData: any): Promise<VerificationResult> => {
     const data: VerificationResult = {
@@ -66,9 +65,9 @@ export const checkAddresses = async (addresses: string, chainIds: string): Promi
         const response = await fetch(`${SERVER_URL}/checkByAddresses?addresses=${addresses}&chainIds=${chainIds}`, {
             method: "GET"
         })
-        const body: CheckAddressesBody = await response.json();
+        const body: ServersideAddressCheck[] = await response.json();
 
-        data.successful = body.filter(value => value.status === 'perfect').map(e => e.address);
+        data.successful = body.filter(value => value.status === 'perfect');
         data.unsuccessful = body.filter(value => value.status === 'false').map(e => e.address);
 
     } catch (e) {

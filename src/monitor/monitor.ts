@@ -1,4 +1,4 @@
-import { cborDecode, getMonitoredChains, MonitorConfig } from "@ethereum-sourcify/core";
+import { cborDecode, getMonitoredChains, MonitorConfig, CheckedContract, FileService, IFileService } from "@ethereum-sourcify/core";
 import { Injector } from "@ethereum-sourcify/verification";
 import Logger from "bunyan";
 import Web3 from "web3";
@@ -9,9 +9,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 import SourceFetcher from "./source-fetcher";
 import SystemConfig from '../config';
+import assert from 'assert';
 dotenv.config({ path: path.resolve(__dirname, "..", "..", "environments/.env") });
 
 const BLOCK_PAUSE_FACTOR = parseInt(process.env.BLOCK_PAUSE_FACTOR) || 1.1;
+assert(BLOCK_PAUSE_FACTOR > 1);
 const BLOCK_PAUSE_UPPER_LIMIT = parseInt(process.env.BLOCK_PAUSE_UPPER_LIMIT) || (30 * 1000); // default: 30 seconds
 const BLOCK_PAUSE_LOWER_LIMIT = parseInt(process.env.BLOCK_PAUSE_LOWER_LIMIT) || (0.5 * 1000); // default: 0.5 seconds
 
@@ -28,18 +30,20 @@ class ChainMonitor {
     private sourceFetcher: SourceFetcher;
     private logger: Logger;
     private injector: Injector;
+    private fileService: IFileService;
     private running: boolean;
 
     private getBytecodeRetryPause: number;
     private getBlockPause: number;
     private initialGetBytecodeTries: number;
 
-    constructor(name: string, chainId: string, web3Url: string, sourceFetcher: SourceFetcher, injector: Injector) {
+    constructor(name: string, chainId: string, web3Url: string, sourceFetcher: SourceFetcher, injector: Injector, fileService: IFileService) {
         this.chainId = chainId;
         this.web3Provider = new Web3(web3Url);
         this.sourceFetcher = sourceFetcher;
         this.logger = new Logger({ name });
         this.injector = injector;
+        this.fileService = fileService;
 
         this.getBytecodeRetryPause = parseInt(process.env.GET_BYTECODE_RETRY_PAUSE) || (5 * 1000);
         this.getBlockPause = parseInt(process.env.GET_BLOCK_PAUSE) || (10 * 1000);
@@ -52,35 +56,37 @@ class ChainMonitor {
         const startBlock = (rawStartBlock !== undefined) ?
             parseInt(rawStartBlock) : await this.web3Provider.eth.getBlockNumber();
         this.processBlock(startBlock);
-        this.logger.info({ loc: "[MONITOR_START]", startBlock }, "Starting monitor");
+        this.logger.info({ loc: "[MONITOR:START]", startBlock });
     }
 
     /**
      * Stops the monitor after executing all pending requests.
      */
     stop = (): void => {
+        this.logger.info({ loc: "[MONITOR:STOP]" }, "Monitor will be stopped after pending calls finish.");
         this.running = false;
     }
 
     private processBlock = (blockNumber: number) => {
         this.web3Provider.eth.getBlock(blockNumber, true).then(block => {
             if (!block) {
-                this.getBlockPause *= BLOCK_PAUSE_FACTOR;
-                this.getBlockPause = Math.min(this.getBlockPause, BLOCK_PAUSE_UPPER_LIMIT);
+                this.adaptBlockPause("increase");
 
                 const logObject = { loc: "[PROCESS_BLOCK]", blockNumber, getBlockPause: this.getBlockPause };
                 this.logger.info(logObject, "Waiting for new blocks");
                 return;
-
-            } else {
-                this.getBlockPause /= BLOCK_PAUSE_FACTOR;
-                this.getBlockPause = Math.max(this.getBlockPause, BLOCK_PAUSE_LOWER_LIMIT);
             }
+
+            this.adaptBlockPause("decrease");
 
             for (const tx of block.transactions) {
                 if (createsContract(tx)) {
                     const address = ethers.utils.getContractAddress(tx);
-                    this.processBytecode(address, this.initialGetBytecodeTries);
+                    if (this.isVerified(address)) {
+                        this.logger.info({ loc: "[PROCESS_ADDRESS:SKIP]", address }, "Already verified");
+                    } else {
+                        this.processBytecode(address, this.initialGetBytecodeTries);
+                    }
                 }
             }
 
@@ -91,6 +97,22 @@ class ChainMonitor {
         }).finally(() => {
             this.mySetTimeout(this.processBlock, this.getBlockPause, blockNumber);
         });
+    }
+
+    private isVerified(address: string): boolean {
+        try {
+            this.fileService.findByAddress(this.chainId, address, this.fileService.repositoryPath);
+            return true;
+        } catch(err) {
+            return false;
+        }
+    }
+
+    private adaptBlockPause = (operation: "increase" | "decrease") => {
+        const factor = (operation === "increase") ? BLOCK_PAUSE_FACTOR : (1 / BLOCK_PAUSE_FACTOR);
+        this.getBlockPause *= factor;
+        this.getBlockPause = Math.min(this.getBlockPause, BLOCK_PAUSE_UPPER_LIMIT);
+        this.getBlockPause = Math.max(this.getBlockPause, BLOCK_PAUSE_LOWER_LIMIT);
     }
 
     private processBytecode = (address: string, retriesLeft: number): void => {
@@ -109,16 +131,7 @@ class ChainMonitor {
             try {
                 const cborData = cborDecode(numericBytecode);
                 const metadataAddress = SourceAddress.fromCborData(cborData);
-                this.sourceFetcher.assemble(metadataAddress, contract => {
-                    const logObject = { loc: "[PROCESS_BYTECODE]", contract: contract.name, address };
-                    this.injector.inject({
-                        contract,
-                        bytecode,
-                        chain: this.chainId,
-                        addresses: [address]
-                    }).then(() => this.logger.info(logObject, "Successfully injected")
-                    ).catch(err => this.logger.error(logObject, err.message));
-                });
+                this.sourceFetcher.assemble(metadataAddress, contract => this.inject(contract, bytecode, address));
             } catch(err) {
                 this.logger.error({ loc: "[GET_BYTECODE:METADATA_READING]", address }, err.message);
             }
@@ -129,7 +142,18 @@ class ChainMonitor {
         });
     }
 
-    private mySetTimeout(handler: TimerHandler, timeout: number, ...args: any[]) {
+    private inject = (contract: CheckedContract, bytecode: string, address: string) => {
+        const logObject = { loc: "[MONITOR:INJECT]", contract: contract.name, address };
+        this.injector.inject({
+            contract,
+            bytecode,
+            chain: this.chainId,
+            addresses: [address]
+        }).then(() => this.logger.info(logObject, "Successfully injected")
+        ).catch(err => this.logger.error(logObject, err.message));
+    }
+
+    private mySetTimeout = (handler: TimerHandler, timeout: number, ...args: any[]) => {
         if (this.running) {
             setTimeout(handler, timeout, ...args);
         }
@@ -145,10 +169,8 @@ export default class Monitor {
     private sourceFetcher = new SourceFetcher();
 
     constructor(config: MonitorConfig = {}) {
-        this.injector = Injector.createOffline({
-            log: new Logger({ name: "Monitor" }),
-            repositoryPath: SystemConfig.repository.path || config.repository
-        });
+        const repositoryPath = config.repository || SystemConfig.repository.path;
+        this.injector = Injector.createOffline({ log: new Logger({ name: "Monitor" }), repositoryPath });
 
         const chains = getMonitoredChains(config.testing || false);
         this.chainMonitors = chains.map((chain: any) => new ChainMonitor(
@@ -156,7 +178,8 @@ export default class Monitor {
             chain.chainId.toString(),
             chain.web3[0].replace("${INFURA_API_KEY}", SystemConfig.endpoint.infuraId),
             this.sourceFetcher,
-            this.injector
+            this.injector,
+            new FileService(repositoryPath)
         ));
     }
 
@@ -174,4 +197,9 @@ export default class Monitor {
         this.chainMonitors.forEach(cm => cm.stop());
         this.sourceFetcher.stop();
     }
+}
+
+if (require.main === module) {
+    const monitor = new Monitor();
+    monitor.start();
 }

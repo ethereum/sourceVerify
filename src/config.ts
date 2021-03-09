@@ -12,7 +12,7 @@ export default {
     },
     server: {
         port: process.env.SERVER_PORT || 5000,
-        url: process.env.SERVER_URL || "http//localhost:5000"
+        url: process.env.SERVER_URL || "http://localhost:5000"
     },
     localchain: {
         port: process.env.LOCALCHAIN_PORT || 8545,

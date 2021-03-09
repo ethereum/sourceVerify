@@ -6,7 +6,6 @@ COPY services/core ./services/core
 COPY services/validation ./services/validation
 COPY services/verification ./services/verification
 COPY src ./src
-COPY scripts/run_monitor.js ./scripts/
 COPY *.json ./
 RUN npx lerna bootstrap && npx lerna run build
 

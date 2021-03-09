@@ -82,22 +82,23 @@ export async function recompile(
         contractName
     } = reformatMetadata(metadata, sources, log);
 
+    const loc = "[RECOMPILE]";
     const version = metadata.compiler.version;
 
     log.info(
-        {
-            loc: '[RECOMPILE]',
-            fileName: fileName,
-            contractName: contractName,
-            version: version
-        },
+        { loc, fileName, contractName, version },
         'Recompiling'
     );
 
     const compiled = await useCompiler(version, input, log);
     const output = JSON.parse(compiled);
-    const contract: any = output.contracts[fileName][contractName];
+    if (!output.contracts || !output.contracts[fileName] || !output.contracts[fileName][contractName]) {
+        const errors = output.errors.filter((e: any) => e.severity === "error").map((e: any) => e.message);
+        log.error({ loc, fileName, contractName, version, errors });
+        throw new Error("Recompilation error (probably caused by invalid metadata)");
+    }
 
+    const contract: any = output.contracts[fileName][contractName];
     return {
         bytecode: contract.evm.bytecode.object,
         deployedBytecode: `0x${contract.evm.deployedBytecode.object}`,
@@ -123,12 +124,14 @@ async function useCompiler(version: string, input: any, log: bunyan) {
     if (solcPath) {
         const logObject = {loc: "[RECOMPILE]", version, solcPath};
         log.info(logObject, "Compiling with external executable");
+
         const shellOutputBuffer = spawnSync(solcPath, ["--standard-json"], {input: inputStringified});
         if (!shellOutputBuffer.stdout) {
             log.error(logObject, shellOutputBuffer.error || "Recompilation error");
             throw new Error("Recompilation error");
         }
         compiled = shellOutputBuffer.stdout.toString();
+
     } else {
         const soljson = await getSolcJs(version, log);
         compiled = soljson.compile(inputStringified);
@@ -202,7 +205,7 @@ function reformatMetadata(
 
     input.settings = metadata.settings;
 
-    // this assumes that the size of copmilationTarget is 1
+    // this assumes that the size of compilationTarget is 1
     for (fileName in metadata.settings.compilationTarget) {
         contractName = metadata.settings.compilationTarget[fileName];
     }
@@ -231,11 +234,9 @@ function reformatMetadata(
         'metadata'
     ];
 
-    return {
-        input: input,
-        fileName: fileName,
-        contractName: contractName
-    }
+    input.settings.libraries = { "": metadata.settings.libraries || {} };
+
+    return { input, fileName, contractName };
 }
 
 

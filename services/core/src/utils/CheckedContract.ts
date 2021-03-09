@@ -1,5 +1,5 @@
 import Web3 from 'web3';
-import { StringMap, SourceMap, Metadata } from './types';
+import { StringMap, Metadata } from './types';
 import { isEmpty } from './utils';
 import bunyan from 'bunyan';
 import fetch from 'node-fetch';

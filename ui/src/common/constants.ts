@@ -14,6 +14,13 @@ export const CHAIN_OPTIONS = [
     {value: "baklava testnet", label: "Celo Baklava Testnet", id: 62320},
 ];
 
+export const ID_TO_CHAIN = {};
+for (const chainOption of CHAIN_OPTIONS) {
+    ID_TO_CHAIN[chainOption.id] = chainOption;
+}
+
+export const CHAIN_IDS_STR = CHAIN_OPTIONS.map(chainOption => chainOption.id).join(",");
+
 export const REPOSITORY_URL = process.env.REPOSITORY_URL;
 export const SERVER_URL = process.env.SERVER_URL;
 export const REPOSITORY_URL_FULL_MATCH = `${REPOSITORY_URL}/contracts/full_match`;

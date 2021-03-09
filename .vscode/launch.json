@@ -26,7 +26,7 @@
       "type": "node",
       "request": "launch",
       "name": "Monitor",
-      "program": "${workspaceFolder}/scripts/run_monitor.js",
+      "program": "${workspaceFolder}/dist/monitor/monitor.js",
       "envFile": "${workspaceFolder}/environments/.env",
       "preLaunchTask": "npm: build:lerna",
       "outFiles": [

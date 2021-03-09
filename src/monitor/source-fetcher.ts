@@ -162,7 +162,12 @@ export default class SourceFetcher {
         this.subscriptions[sourceHash].subscribers.push(callback);
 
         this.subscriptionCounter++;
-        this.logger.info({ loc: "[SOURCE_FETCHER:NEW_SUBSCRIPTION]", filesPending: this.fileCounter, subscriptions: this.subscriptionCounter });
+        this.logger.info({
+            loc: "[SOURCE_FETCHER:NEW_SUBSCRIPTION]",
+            sourceHash,
+            filesPending: this.fileCounter,
+            subscriptions: this.subscriptionCounter
+        });
     }
 
     private cleanup(sourceHash: string) {
@@ -173,7 +178,12 @@ export default class SourceFetcher {
 
         this.fileCounter--;
         this.subscriptionCounter -= subscriptionsDelta;
-        this.logger.info({ loc: "[SOURCE_FETCHER:CLEANUP]", sourceHash, filesPending: this.fileCounter, subscriptions: this.subscriptionCounter });
+        this.logger.info({
+            loc: "[SOURCE_FETCHER:CLEANUP]",
+            sourceHash,
+            filesPending: this.fileCounter,
+            subscriptions: this.subscriptionCounter
+        });
     }
 
     private shouldCleanup(sourceHash: string) {

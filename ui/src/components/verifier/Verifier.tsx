@@ -4,15 +4,16 @@ import {VerifierState} from "../../types";
 import {
     CHAIN_OPTIONS as chainOptions,
     REPOSITORY_URL_FULL_MATCH,
-    REPOSITORY_URL_PARTIAL_MATCH
+    REPOSITORY_URL_PARTIAL_MATCH,
+    ID_TO_CHAIN,
+    CHAIN_IDS_STR
 } from "../../common/constants";
 import {FileUpload, AddressInput} from "./form";
 import Dropdown from "../Dropdown";
 import LoadingOverlay from "../LoadingOverlay";
 import {useDispatchContext} from "../../state/State";
-import {checkAddresses, verify} from "../../api/verifier";
+import {checkAddresses, verify, ServersideAddressCheck} from "../../api/verifier";
 import Web3 from "web3-utils";
-import {getChainIds} from "../../utils";
 import Spinner from "../Spinner";
 
 const initialState: VerifierState = {
@@ -57,7 +58,7 @@ const Verifier: React.FC = () => {
             dispatch({type: "SET_IS_VALIDATION_ERROR", payload: false})
             dispatch({type: "SET_VERIFY_ADDRESS_LOADING", payload: true});
 
-            checkAddresses(addresses.join(','), getChainIds()).then(data => {
+            checkAddresses(addresses.join(','), CHAIN_IDS_STR).then(data => {
                 console.log(data.error)
                 if (data.error) {
                     globalDispatch({
@@ -76,9 +77,7 @@ const Verifier: React.FC = () => {
                         type: "SHOW_NOTIFICATION",
                         payload: {
                             type: "error",
-                            content: data.unsuccessful.length > 1 ?
-                                `Addresses ${data.unsuccessful.join(',')} are not yet verified` :
-                                `Address ${data.unsuccessful.join(',')} is not yet verified`
+                            content: `${data.unsuccessful.join(", ")} ${data.unsuccessful.length > 1 ? "are" : "is"} not yet verified`
                         }
                     });
                 } else {
@@ -86,9 +85,7 @@ const Verifier: React.FC = () => {
                         type: "SHOW_NOTIFICATION",
                         payload: {
                             type: "success",
-                            content: data.successful.length > 1 ?
-                                "Addresses successfully verified" :
-                                "Address successfully verified"
+                            content: () => <div>{data.successful.map(checkResultToElement)}</div>
                         }
                     });
                 }
@@ -96,6 +93,41 @@ const Verifier: React.FC = () => {
             });
         }
     }, [state.address])
+
+    /**
+     * Sort of JSX equivalent of arr.join(sep).
+     * Copied from https://stackoverflow.com/a/23619085
+    */
+    function intersperse(arr: any[], sep: any) {
+        if (arr.length === 0) {
+            return [];
+        }
+    
+        return arr.slice(1).reduce(function(xs, x) {
+            return xs.concat([sep, x]);
+        }, [arr[0]]);
+    }
+
+    const checkResultToElement = (checkResult: ServersideAddressCheck) => {
+        return <p key={checkResult.address}>{checkResult.address} is verified on: {
+            intersperse(
+                checkResult.chainIds.map(chainId => chainToLink(chainId, checkResult.address)), 
+                ", "
+            )
+        }</p>
+    }
+
+    const chainToLink = (chainId: string, address: string): JSX.Element => {
+        const chain = ID_TO_CHAIN[chainId];
+        const label = chain ? chain.label : "Unknown chain";
+        return <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={`${REPOSITORY_URL_FULL_MATCH}/${chainId}/${address}`}
+            style={ { wordBreak: "break-word" } }
+            key={chainId}
+        >{label}</a>;
+    }
 
     const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         dispatch(

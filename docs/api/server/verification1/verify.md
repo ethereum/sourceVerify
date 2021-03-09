@@ -27,7 +27,7 @@ If using `application/json`, the files should be in an object under the key `fil
 
 ## Responses
 
-**Condition** : Contract is perfect match.
+**Condition** : The recompiled contract matches the deployed version `perfect`ly.
 
 **Code** : `200 OK`
 
@@ -45,7 +45,7 @@ If using `application/json`, the files should be in an object under the key `fil
 ```
 ### OR
 
-**Condition** : Contract is partial match.
+**Condition** : The recompiled contract matches the deployed version `partial`ly.
 
 **Code** : `200 OK`
 
@@ -63,6 +63,25 @@ If using `application/json`, the files should be in an object under the key `fil
 ```
 
 ### OR
+
+**Condition** : The contract at the provided address and chain has already been sourcified at timestamp indicated by `storageTimestamp`.
+
+**Code** : `200 OK`
+
+**Content** :
+```json
+{
+    "result": [
+        {
+            "address": "0x0001Db7722Fb4211C24d4aC5E1127353116323d3",
+            "status": "perfect",
+            "storageTimestamp":"2020-11-10T14:12:15.665Z"
+        }
+    ]
+}
+```
+
+### OR
 **Condition** : Missing or invalid parameters received.
 
 **Code** : `400 Bad Request`
@@ -70,19 +89,93 @@ If using `application/json`, the files should be in an object under the key `fil
 **Content** :
 ```json
 {
-    "error": "Missing body parameters: address, chain"
+    "message": "Validation Error: address, chain",
+    "errors": [
+        {
+            "field": "address",
+            "message": "Invalid value"
+        },
+        {
+            "field": "chain",
+            "message": "Invalid value"
+        }
+    ]
+}
+```
+
+### OR
+**Condition** : Provided valid address and chain input, but no files. This is interpreted as simply checking whether the contract at the provided address and chain has already been sourcified.
+
+**Code** : `404 Not Found`
+
+**Content** :
+```json
+{
+    "error": "The contract at the provided address has not yet been sourcified."
 }
 ```
 
 ### OR
 
-**Condition** : Failed fetching missing files. OR Contract bytecode does not match deployed bytecode.
+**Condition** : Recompiled bytecode does not match the deployed bytecode.
 
 **Code** : `500 Internal Server Error`
 
-**Content** : 
+**Content** :
 ```json
 {
-    "error": "Could not match on-chain deployed bytecode to recompiled bytecode for:\n{\n \"browser/ParameterTest.sol\": \"ParameterTest\"\n}\nAddresses checked:\n[\n \"0x0001Db7722Fb4211C24d4aC5E1127353116323d3\"\n]"
+    "error": "The deployed and recompiled bytecode don't match."
+}
+```
+
+### OR
+
+**Condition** : The provided chain does not have a contract deployed at the provided address.
+
+**Code** : `500 Internal Server Error`
+
+**Content** :
+```json
+{
+    "error":"Contract name: RandomName. Ethereum Mainnet does not have a contract deployed at 0x7c90F0C9Eb46391c93d0545dDF4658d3B8DF1866."
+}
+```
+
+### OR
+
+**Condition** : The provided chain is temporarily unavailable.
+
+**Code** : `500 Internal Server Error`
+
+**Content** :
+```json
+{
+    "error":"Contract name: RandomName. Ethereum Mainnet is temporarily unavailable."
+}
+```
+
+### OR
+
+**Condition** : Some resources are missing and could not be fetched.
+
+**Code** : `500 Internal Server Error`
+
+**Content** :
+```json
+{
+    "error":"Resource missing; unsuccessful fetching: browser/RandomName.sol"
+}
+```
+
+### OR
+
+**Condition** : Verifying contracts with immutable variables is not supported for the provided chain.
+
+**Code** : `500 Internal Server Error`
+
+**Content** :
+```json
+{
+    "error":"Contract name: RandomName. Verifying contracts with immutable variables is not supported for Ethereum Mainnet."
 }
 ```

@@ -7,7 +7,7 @@
     "dev": "webpack-dev-server --config webpack.dev.js",
     "prebuild": "npm install && rimraf dist",
     "build": "webpack --config webpack.prod.js",
-    "serve": "serve -l 1234 dist/",
+    "serve": "serve -l 1234 dist/ --no-clipboard",
     "start": "npm run build && npm run serve"
   },
   "keywords": [],

@@ -123,12 +123,11 @@ The repository is accessible via this [link](https://repo.sourcify.dev/).
 The repository UI currently looks like this:
 <img src="./public/ui_start.png" width="80%"/>
 
-It offers the option to search, donwload or open folders.
+It offers the option to search, download or open folders.
 
 For example to download:
 
 <img src="./public/download.png" width="80%"/>
-
 
 Or if you want to search something:
 
@@ -269,3 +268,22 @@ You can find examples in our Postman collection in the root of this project `Sou
 * [Get file tree (full or partial match)](docs/api/server/getAnyTreeByChainAndAddress.md) : `GET /files/tree/any/:chain/:address`
 * [Get source files (full or partial match)](docs/api/server/getAnyByChainAndAddress.md) : `GET /files/any/:chain/:address`
 * [Server health](docs/api/server/health.md) : `GET /health`
+
+### Repository API
+
+This paragraph should be read with the following in mind:
+* `<MATCH_QUALITY>` is either `full_match` or `partial_match`.
+* `<CHAIN_ID>` is the respective ID of the chain (e.g. 1 for Ethereum Mainnet, 5 for Görli). See the full list [here](https://chainid.network/).
+* `<CONTRACT_ADDRESS>` is the hexadecimal address of the contract (40 hex digits prefixed by `0x`).
+* `<FILE_PATH>` is the original path of a source file. Sourcify doesn't flatten the file hierarchy, so everything is provided as during compilation.
+
+The repository (https://repo.sourcify.dev) provides the following GET endpoints:
+* JSON-formatted metadata file (with ABI): `/contracts/<MATCH_QUALITY>/<CHAIN_ID>/<CONTRACT_ADDRESS>/metadata.json`
+* Source file: `/contracts/<MATCH_QUALITY>/<CHAIN_ID>/<CONTRACT_ADDRESS>/sources/<FILE_PATH>`
+* JSON-formatted full and partial match count per chain: `/stats.json`
+* JSON-formatted timestamp and version of the repo: `/manifest.json`
+
+E.g. the following URL fetches `browser/OceanMan.sol`, a source of the contract deployed on Ethereum Mainnet (chain ID: 1) at address 0x00000000064Ecc11c97AC4a5551F279532Bf9E0D.
+* https://repo.sourcify.dev/contracts/full_match/1/0x00000000064Ecc11c97AC4a5551F279532Bf9E0D/sources/browser/OceanMan.sol
+
+In order to fetch from the staging repository, replace https://repo.sourcify.dev with https://contractrepo.sourcify.shardlabs.io.

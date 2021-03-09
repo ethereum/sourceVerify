@@ -11,5 +11,5 @@
     "declaration": true,
     "module": "commonjs"
   },
-  "include": ["./src", "src/run_monitor.js", "src/localchain.js", "src/cli"]
+  "include": ["./src"]
 }
