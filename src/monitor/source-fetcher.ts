@@ -68,7 +68,7 @@ export default class SourceFetcher {
     private fetch = (sourceHashes: string[], index: number): void => {
         if (index >= sourceHashes.length) {
             const newSourceHashes = Object.keys(this.subscriptions); // make a copy so that subscriptions can be freely cleared if necessary
-            if (this.running) setTimeout(this.fetch, NO_PAUSE, newSourceHashes, STARTING_INDEX);
+            this.mySetTimeout(this.fetch, NO_PAUSE, newSourceHashes, STARTING_INDEX);
             return;
         }
 
@@ -85,7 +85,7 @@ export default class SourceFetcher {
         }
 
         if (nextFast) {
-            setTimeout(this.fetch, NO_PAUSE, sourceHashes, index + 1);
+            this.mySetTimeout(this.fetch, NO_PAUSE, sourceHashes, index + 1);
             return;
         }
 
@@ -112,7 +112,13 @@ export default class SourceFetcher {
             subscription.beingProcessed = false;
         });
 
-        if (this.running) setTimeout(this.fetch, this.fetchPause, sourceHashes, index + 1);
+        this.mySetTimeout(this.fetch, this.fetchPause, sourceHashes, index + 1);
+    }
+
+    private mySetTimeout = (handler: TimerHandler, timeout: number, ...args: any[]) => {
+        if (this.running) {
+            setTimeout(handler, timeout, ...args);
+        }
     }
 
     private findGateway(sourceAddress: SourceAddress) {
