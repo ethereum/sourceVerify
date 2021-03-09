@@ -85,6 +85,7 @@ class ChainMonitor {
                     if (this.isVerified(address)) {
                         this.logger.info({ loc: "[PROCESS_ADDRESS:SKIP]", address }, "Already verified");
                     } else {
+                        this.logger.info({ loc: "[PROCESS_ADDRESS]", address }, "New contract");
                         this.processBytecode(address, this.initialGetBytecodeTries);
                     }
                 }
